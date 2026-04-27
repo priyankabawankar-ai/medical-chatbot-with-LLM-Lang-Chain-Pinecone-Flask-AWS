@@ -12,28 +12,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy app
-        shell: bash
+      - name: Stop old container
         run: |
-          set -e
+          docker stop medical-chatbot || true
+          docker rm medical-chatbot || true
 
-          # Create .env from GitHub secrets
-          cat > .env << 'EOF'
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}
-          EOF
+      - name: Build Docker image
+        run: |
+          docker build -t medical-chatbot .
 
-          # Create venv if not exists
-          if [ ! -d "venv" ]; then
-            python3 -m venv venv
-          fi
-
-          # Install deps
-          ./venv/bin/pip install --upgrade pip
-          ./venv/bin/pip install -r requirements.txt
-
-          # Stop old app
-          pkill -f "python app.py" || true
-
-          # Start app
-          nohup ./venv/bin/python app.py > app.log 2>&1 &
+      - name: Run container
+        run: |
+          docker run -d \
+          -p 8080:8080 \
+          --name medical-chatbot \
+          -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+          -e PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }} \
+          medical-chatbot
