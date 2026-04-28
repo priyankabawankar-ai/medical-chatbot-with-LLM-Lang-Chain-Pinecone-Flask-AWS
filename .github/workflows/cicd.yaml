@@ -33,35 +33,37 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   Continuous-Deployment:
-    needs: Continuous-Integration
-    runs-on: self-hosted
+  needs: Continuous-Integration
+  runs-on: self-hosted
 
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+    - name: Set ECR registry
+      run: |
+        echo "ECR_REGISTRY=295933006926.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com" >> $GITHUB_ENV
 
-      - name: Pull latest image
-        run: |
-          docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPO }}:latest
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Stop old container
-        run: |
-          docker stop medical-chatbot || true
-          docker rm medical-chatbot || true
+    - name: Pull latest image
+      run: |
+        docker pull $ECR_REGISTRY/${{ secrets.ECR_REPO }}:latest
 
-      - name: Run container
-        run: |
-          docker run -d \
-          --name medical-chatbot \
-          -p 8080:8080 \
-          -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-          -e PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }} \
-          ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPO }}:latest
+    - name: Stop old container
+      run: |
+        docker rm -f medical-chatbot || true
+
+    - name: Run container
+      run: |
+        docker run -d \
+        --name medical-chatbot \
+        -p 8080:8080 \
+        -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+        -e PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }} \
+        $ECR_REGISTRY/${{ secrets.ECR_REPO }}:latest
