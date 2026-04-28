@@ -83,7 +83,7 @@ def chat():
         user_msg = request.form.get("msg")
 
         if not user_msg:
-            return {"answer": "Please enter a question."}, 400
+            return "Please enter a question."
 
         session_id = "user_1"
 
@@ -97,11 +97,11 @@ def chat():
         else:
             answer = str(response)
 
-        return {"answer": answer}
+        return answer
 
     except Exception as e:
         print("Error:", str(e))
-        return {"answer": str(e)}, 500
+        return "Something went wrong."
 
 
 if __name__ == "__main__":
